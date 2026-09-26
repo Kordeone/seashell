@@ -7,7 +7,7 @@ import qs.core
 PanelWindow {
     id: bar
 
-    visible: ModuleManager.isActive("bar", "seashell")
+    visible: ModuleManager.isActive("bar.seashell")
 
     anchors {
         top: true

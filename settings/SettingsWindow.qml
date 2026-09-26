@@ -8,6 +8,12 @@ import qs.styles
 PanelWindow {
     id: window
 
+    IpcHandler {
+        target: "settings"
+        function toggle(): void { ShellState.toggleSettings() }
+        function show(): void { ShellState.showSettings("appearance", "general") }
+    }
+
     ShortcutInhibitor {
         window: window
         enabled: window.visible && keybindPage.capturingId.length > 0
@@ -118,7 +124,9 @@ PanelWindow {
             return [
                 { key: "general", name: "GENERAL" },
                 { key: "sources", name: "SOURCES" },
-                { key: "applications", name: "APPLICATIONS" }
+                { key: "applications", name: "APPLICATIONS" },
+                { key: "web-apps", name: "WEB APPS" },
+                { key: "shortcuts", name: "SHORTCUTS" }
             ]
         }
 
@@ -261,20 +269,20 @@ PanelWindow {
 
         case "keybinds":
             return [
-                "Keyboard-first: core actions work through global shortcuts and Launcher",
-                "Backend: Hyprland global shortcuts",
-                "Current status: " + Keybinds.backendStatus,
-                "Shortcut capture and Seashell duplicate detection are in Shortcuts",
-                "More shell and module actions will join the registry later"
+                "Hyprland owns physical chords; GlobalShortcut routes registered Seashell actions",
+                "Current backend: " + Keybinds.backendStatus,
+                "Existing bindings are detected before any change",
+                "A conflict requires an explicit Replace confirmation",
+                "Seashell saves generated Lua or Hyprlang includes and never edits the main config"
             ]
 
         case "modules":
             return [
-                "One active provider per conflicting category",
-                "Seashell Bar remains the built-in fallback",
-                "Waybar is the first external provider",
-                "Available, installed and active are separate states",
-                "Notifications, wallpaper and other categories come later"
+                "Catalog: Bar, Launcher, Notifications, Wallpaper, Lock, Idle, OSD, Control Center, Dock, Power, Screenshot",
+                "Installed and repository/AUR availability come from the local package manager",
+                "Waybar is the first generated-theme bar adapter; the built-in Seashell Bar remains its fallback",
+                "Managed lifecycles currently cover Waybar, notification daemons, swaybg, idle daemons, SwayOSD, and nwg-dock-hyprland",
+                "Other external providers remain installable catalog entries until their adapters are implemented"
             ]
 
         case "plugins":

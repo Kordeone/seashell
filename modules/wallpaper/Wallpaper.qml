@@ -18,6 +18,7 @@ Scope {
             visible:
                 WallpaperState
                     .hasShellWallpaper
+                && ModuleManager.activeProvider("wallpaper") === "wallpaper.seashell"
 
             anchors {
                 top: true

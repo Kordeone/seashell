@@ -7,10 +7,11 @@ import qs.core
 Scope {
     id: root
 
-    readonly property bool wantsWaybar: ModuleManager.isActive("bar", "waybar")
+    readonly property bool wantsWaybar: ModuleManager.activeProvider("bar") === "bar.waybar"
+        || ModuleManager.transitionTarget === "bar.waybar"
     readonly property string css: makeCss(
-        Theme.background, Theme.surface, Theme.foreground,
-        Theme.foregroundMuted, Theme.accent, Theme.border,
+        Theme.background, Theme.surface, Theme.surfaceRaised, Theme.foreground,
+        Theme.foregroundMuted, Theme.accent, Theme.border, Theme.focus,
         Theme.fontUI, Theme.radiusMedium)
     property bool configReady: false
     property bool styleReady: false
@@ -25,7 +26,7 @@ Scope {
         return "#" + byte(color.r) + byte(color.g) + byte(color.b)
     }
 
-    function makeCss(background, surface, foreground, muted, accent, border, font, radius) {
+    function makeCss(background, surface, raised, foreground, muted, accent, border, focus, font, radius) {
         const family = font.replace(/["\\]/g, "")
         return "* { font-family: \"" + family + "\"; }\n"
             + "window#waybar { background: " + hex(background) + "; color: "
@@ -33,6 +34,8 @@ Scope {
             + "#workspaces button { color: " + hex(muted) + "; background: "
             + hex(surface) + "; border-radius: " + radius + "px; }\n"
             + "#workspaces button.active { color: " + hex(accent) + "; }\n"
+            + "#workspaces button:hover { background: " + hex(raised)
+            + "; border-color: " + hex(focus) + "; }\n"
             + "#clock { color: " + hex(foreground) + "; background: " + hex(surface)
             + "; border: 1px solid " + hex(border) + "; border-radius: "
             + radius + "px; padding: 0 12px; }\n"
@@ -41,10 +44,31 @@ Scope {
     function updateRunning() {
         if (!wantsWaybar) {
             pendingRestart = false
-            waybar.running = false
+            if (waybar.running)
+                waybar.running = false
+            else if (ModuleManager.transitionTarget === "bar.seashell")
+                ModuleManager.adapterStopped("bar.waybar", true, "")
         } else if (configReady && styleReady && !waybar.running) {
             waybar.running = true
         }
+    }
+
+    function prepareToStart() {
+        if (!configReady || !styleReady) {
+            configReady = false
+            styleReady = false
+            configFile.setText(JSON.stringify({
+                layer: "top",
+                position: "top",
+                height: 32,
+                "modules-left": ["hyprland/workspaces"],
+                "modules-center": ["clock"],
+                clock: { format: "{:%H:%M}" }
+            }, null, 2))
+            styleFile.setText(css)
+            return
+        }
+        updateRunning()
     }
 
     onCssChanged: {
@@ -68,8 +92,8 @@ Scope {
         }
         onSaveFailed: {
             root.configReady = false
-            ModuleManager.activate("bar", "seashell")
-            ModuleManager.statusMessage = "Could not write Seashell Waybar config"
+            ModuleManager.adapterStarted("bar.waybar", false,
+                "Could not write the Seashell-owned Waybar config.")
         }
     }
     FileView {
@@ -82,8 +106,12 @@ Scope {
         }
         onSaveFailed: {
             root.styleReady = false
-            ModuleManager.activate("bar", "seashell")
-            ModuleManager.statusMessage = "Could not write Seashell Waybar style"
+            if (ModuleManager.waybarRunning)
+                ModuleManager.adapterStopped("bar.waybar", false,
+                    "Could not write the Seashell-owned Waybar stylesheet; Seashell Bar restored.")
+            else
+                ModuleManager.adapterStarted("bar.waybar", false,
+                    "Could not write the Seashell-owned Waybar stylesheet.")
         }
     }
 
@@ -93,14 +121,34 @@ Scope {
             "waybar", "-c", Quickshell.statePath("seashell-waybar.jsonc"),
             "-s", Quickshell.statePath("seashell-waybar.css")
         ]
+        onRunningChanged: {
+            if (running && ModuleManager.transitionTarget === "bar.waybar")
+                ModuleManager.adapterStarted("bar.waybar", true, "")
+        }
         onExited: (code) => {
-            if (root.pendingRestart) {
+            if (root.shuttingDown) {
+                return
+            } else if (root.pendingRestart) {
                 root.pendingRestart = false
                 root.updateRunning()
+            } else if (ModuleManager.transitionTarget === "bar.seashell") {
+                ModuleManager.adapterStopped("bar.waybar", true, "")
+            } else if (ModuleManager.transitionTarget === "bar.waybar") {
+                ModuleManager.adapterStarted("bar.waybar", false,
+                    "Waybar exited during startup (code " + code + ").")
             } else if (root.wantsWaybar && !root.shuttingDown) {
-                ModuleManager.activate("bar", "seashell")
-                ModuleManager.statusMessage = "Waybar exited with code " + code
+                ModuleManager.adapterStopped("bar.waybar", false,
+                    "Waybar exited unexpectedly (code " + code + "); Seashell Bar restored.")
             }
+        }
+    }
+
+    Connections {
+        target: ModuleManager
+        function onStartWaybarRequested() { root.prepareToStart() }
+        function onStopWaybarRequested() {
+            root.pendingRestart = false
+            waybar.running = false
         }
     }
 

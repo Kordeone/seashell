@@ -7,16 +7,14 @@ Item {
     property string capturingId: ""
     property string proposed: ""
     property string message: ""
-    property var captureButton: null
 
     focus: true
-
     onVisibleChanged: {
         if (!visible) {
             capturingId = ""
             proposed = ""
-            captureButton = null
             message = ""
+            HyprlandShortcuts.cancelPending()
         }
     }
 
@@ -24,26 +22,23 @@ Item {
         if (!capturingId)
             return
         event.accepted = true
-        if (event.key === Qt.Key_Escape) {
+        if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
             capturingId = ""
             proposed = ""
             message = ""
-            captureButton = null
             return
         }
         const value = Keybinds.fromEvent(event)
         if (!value)
             return
-        proposed = value
-        const conflict = Keybinds.duplicate(capturingId, value)
-        message = conflict ? "Already used by " + conflict.name : ""
-        if (!conflict && captureButton)
-            captureButton.forceActiveFocus()
+        proposed = Keybinds.normalized(value)
+        const duplicate = Keybinds.duplicate(capturingId, proposed)
+        message = duplicate ? "Already used by " + duplicate.name + "." : ""
     }
 
     Column {
         anchors.fill: parent
-        spacing: 12
+        spacing: 11
 
         Text {
             text: "SEASHELL SHORTCUTS"
@@ -53,10 +48,12 @@ Item {
             font.bold: true
         }
         Text {
-            text: "Click Change, press a combination, then Apply. Escape cancels."
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: "Hyprland owns physical keys. Seashell registers stable logical shortcuts, then writes their physical mappings to a Seashell-owned Hyprland include."
             color: Theme.foregroundMuted
             font.family: Theme.fontUI
-            font.pixelSize: 10
+            font.pixelSize: 9
         }
 
         Repeater {
@@ -64,56 +61,77 @@ Item {
             delegate: Rectangle {
                 required property var modelData
                 width: parent.width
-                height: 78
+                height: 90 + ((HyprlandShortcuts.conflicts[modelData.id] || []).length ? 25 : 0)
                 radius: Theme.radiusSmall
                 color: Theme.surface
                 border.width: Theme.borderWidth
-                border.color: Theme.border
+                border.color: (HyprlandShortcuts.conflicts[modelData.id] || []).length
+                    ? Theme.warning : Theme.border
 
                 Column {
                     anchors.left: parent.left
-                    anchors.leftMargin: 13
-                    anchors.right: controls.left
-                    anchors.rightMargin: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
+                    anchors.leftMargin: 12
+                    anchors.right: buttons.left
+                    anchors.rightMargin: 9
+                    anchors.top: parent.top
+                    anchors.topMargin: 9
+                    spacing: 3
+
                     Text {
+                        width: parent.width
                         text: modelData.name
+                        elide: Text.ElideRight
                         color: Theme.foreground
                         font.family: Theme.fontUI
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                         font.bold: true
                     }
                     Text {
-                        text: modelData.description
-                        color: Theme.foregroundMuted
-                        font.family: Theme.fontUI
-                        font.pixelSize: 8
-                    }
-                    Text {
-                        text: (root.capturingId === modelData.id
+                        width: parent.width
+                        text: "Current: " + (root.capturingId === modelData.id
                             ? (root.proposed || "PRESS KEYS…")
-                            : Keybinds.binding(modelData.id)).replace(/\+/g, " + ")
-                        color: root.capturingId === modelData.id
-                            ? Theme.accent : Theme.foreground
+                            : (Keybinds.binding(modelData.id) || "UNASSIGNED"))
+                        elide: Text.ElideRight
+                        color: root.capturingId === modelData.id ? Theme.accent : Theme.foreground
                         font.family: Theme.fontMono
-                        font.pixelSize: 9
+                        font.pixelSize: 8
                         font.bold: true
+                    }
+                    Text {
+                        width: parent.width
+                        text: modelData.defaultBinding
+                            ? "Default: " + modelData.defaultBinding : "Default: none"
+                        color: Theme.foregroundMuted
+                        font.family: Theme.fontMono
+                        font.pixelSize: 7
+                    }
+                    Text {
+                        width: parent.width
+                        visible: (HyprlandShortcuts.conflicts[modelData.id] || []).length > 0
+                        text: {
+                            const conflicts = HyprlandShortcuts.conflicts[modelData.id] || []
+                            return conflicts.length ? "CONFLICT · " + conflicts[0].owner
+                                + " · source: " + conflicts[0].source : ""
+                        }
+                        elide: Text.ElideRight
+                        color: Theme.warning
+                        font.family: Theme.fontMono
+                        font.pixelSize: 7
                     }
                 }
 
                 Row {
-                    id: controls
+                    id: buttons
                     anchors.right: parent.right
-                    anchors.rightMargin: 10
+                    anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 5
+                    spacing: 4
 
                     Rectangle {
                         id: changeButton
                         activeFocusOnTab: true
-                        width: 62
-                        height: 29
+                        width: 56
+                        height: 28
                         radius: Theme.radiusSmall
                         color: Theme.surfaceRaised
                         border.width: Theme.borderWidth
@@ -123,14 +141,16 @@ Item {
                                 root.capturingId = modelData.id
                                 root.proposed = ""
                                 root.message = ""
-                                root.captureButton = changeButton
+                                HyprlandShortcuts.cancelPending()
                                 root.forceActiveFocus()
                             } else if (root.proposed) {
-                                if (Keybinds.setBinding(modelData.id, root.proposed)) {
+                                const accepted = HyprlandShortcuts.requestApply(
+                                    modelData.id, root.proposed, false)
+                                if (accepted) {
                                     root.capturingId = ""
                                     root.proposed = ""
-                                    root.message = ""
-                                    root.captureButton = null
+                                } else if (!HyprlandShortcuts.pendingApply) {
+                                    root.message = HyprlandShortcuts.issue
                                 }
                             }
                         }
@@ -146,7 +166,7 @@ Item {
                             text: root.capturingId === modelData.id ? "APPLY" : "CHANGE"
                             color: Theme.accent
                             font.family: Theme.fontMono
-                            font.pixelSize: 8
+                            font.pixelSize: 7
                             font.bold: true
                         }
                         MouseArea {
@@ -155,43 +175,47 @@ Item {
                             onClicked: changeButton.choose()
                         }
                     }
+
                     Rectangle {
-                        id: resetButton
                         activeFocusOnTab: true
-                        width: 54
-                        height: 29
+                        width: 48
+                        height: 28
                         radius: Theme.radiusSmall
                         color: Theme.background
                         border.width: Theme.borderWidth
                         border.color: activeFocus ? Theme.focus : Theme.border
                         function choose() {
-                            if (!Keybinds.reset(modelData.id))
-                                root.message = "Default conflicts with another Seashell shortcut"
-                            else
-                                root.message = ""
-                            root.capturingId = ""
-                            root.proposed = ""
-                            root.captureButton = null
+                            HyprlandShortcuts.cancelPending()
+                            if (modelData.defaultBinding) {
+                                const accepted = HyprlandShortcuts.requestApply(
+                                    modelData.id, modelData.defaultBinding, true)
+                                if (accepted) {
+                                    root.capturingId = ""
+                                    root.proposed = ""
+                                }
+                            } else {
+                                HyprlandShortcuts.requestClear(modelData.id)
+                            }
                         }
                         Keys.onPressed: event => {
                             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
                                     || event.key === Qt.Key_Space) {
-                                resetButton.choose()
+                                choose()
                                 event.accepted = true
                             }
                         }
                         Text {
                             anchors.centerIn: parent
-                            text: "RESET"
+                            text: modelData.defaultBinding ? "RESET" : "CLEAR"
                             color: Theme.foregroundMuted
                             font.family: Theme.fontMono
-                            font.pixelSize: 8
+                            font.pixelSize: 7
                             font.bold: true
                         }
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: resetButton.choose()
+                            onClicked: parent.choose()
                         }
                     }
                 }
@@ -199,20 +223,131 @@ Item {
         }
 
         Text {
-            visible: root.message.length > 0
-            text: root.message
+            visible: root.message.length > 0 || HyprlandShortcuts.issue.length > 0
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: root.message || HyprlandShortcuts.issue
             color: Theme.warning
             font.family: Theme.fontUI
-            font.pixelSize: 10
+            font.pixelSize: 9
         }
-
         Text {
             width: parent.width
             wrapMode: Text.Wrap
-            text: "Backend: Hyprland global shortcuts · " + Keybinds.backendStatus
+            text: Keybinds.backendStatus + "\n" + HyprlandShortcuts.generatedStatus
             color: Theme.foregroundMuted
             font.family: Theme.fontMono
-            font.pixelSize: 8
+            font.pixelSize: 7
         }
+    }
+
+    Rectangle {
+            anchors.fill: parent
+            visible: !!HyprlandShortcuts.pendingApply
+            z: 100
+            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.78)
+            MouseArea { anchors.fill: parent }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.min(360, parent.width - 20)
+                height: conflictInfo.implicitHeight + 93
+                radius: Theme.radiusMedium
+                color: Theme.surfaceRaised
+                border.width: Theme.borderWidth
+                border.color: Theme.warning
+
+                Column {
+                    id: conflictInfo
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 15
+                    spacing: 7
+
+                    Text {
+                        text: "Replace this Hyprland binding?"
+                        color: Theme.foreground
+                        font.family: Theme.fontUI
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: "Hyprland currently assigns " + HyprlandShortcuts.pendingApply.binding
+                            + " to another action. Confirming records the displaced bind and writes an unbind plus the Seashell logical shortcut into the generated include. Hyprland must load that include for the replacement to take effect."
+                        color: Theme.foregroundMuted
+                        font.family: Theme.fontUI
+                        font.pixelSize: 9
+                    }
+                    Repeater {
+                        model: HyprlandShortcuts.pendingConflicts
+                        delegate: Text {
+                            required property var modelData
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: modelData.owner + "\n" + modelData.source
+                            color: Theme.warning
+                            font.family: Theme.fontMono
+                            font.pixelSize: 7
+                        }
+                    }
+                }
+
+                Row {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 12
+                    spacing: 7
+
+                    Rectangle {
+                        width: 70
+                        height: 28
+                        radius: Theme.radiusSmall
+                        color: Theme.background
+                        border.width: Theme.borderWidth
+                        border.color: Theme.border
+                        Text {
+                            anchors.centerIn: parent
+                            text: "CANCEL"
+                            color: Theme.foregroundMuted
+                            font.family: Theme.fontMono
+                            font.pixelSize: 7
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: HyprlandShortcuts.cancelPending()
+                        }
+                    }
+                    Rectangle {
+                        width: 93
+                        height: 28
+                        radius: Theme.radiusSmall
+                        color: Theme.surface
+                        border.width: Theme.borderWidth
+                        border.color: Theme.warning
+                        Text {
+                            anchors.centerIn: parent
+                            text: "REPLACE"
+                            color: Theme.warning
+                            font.family: Theme.fontMono
+                            font.pixelSize: 7
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (HyprlandShortcuts.confirmReplace()) {
+                                    root.capturingId = ""
+                                    root.proposed = ""
+                                }
+                            }
+                        }
+                    }
+                }
+            }
     }
 }

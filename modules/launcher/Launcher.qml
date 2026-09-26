@@ -397,7 +397,7 @@ Scope {
                         }
 
                         text:
-                            "Search apps and actions…"
+                            "Search apps, actions, web apps, and shortcuts…"
 
                         color:
                             Theme.foregroundDisabled
@@ -567,11 +567,10 @@ Scope {
 
                                 width: parent.width
 
-                                text:
-                                    (modelData.type === "action"
-                                        ? "SEASHELL ACTION · "
-                                        : "APPLICATION · ")
-                                    + modelData.description
+                                text: (modelData.source === "actions" ? "SEASHELL ACTION · "
+                                    : modelData.source === "web-apps" ? "WEB APP · "
+                                    : modelData.source === "shortcuts" ? "USER SHORTCUT · "
+                                    : "APPLICATION · ") + modelData.description
 
                                 elide:
                                     Text.ElideRight

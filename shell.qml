@@ -8,6 +8,11 @@ import qs.modules.wallpaper
 import qs.modules.launcher
 
 ShellRoot {
+    IpcHandler {
+        target: "seashell"
+        function action(id: string): void { LauncherActions.activateId(id) }
+    }
+
     Wallpaper {}
     Bar {}
     Loader {

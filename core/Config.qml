@@ -20,7 +20,10 @@ Singleton {
     property alias hiddenApplications: settingsData.hiddenApplications
     property alias launcherSources: settingsData.launcherSources
     property alias keybinds: settingsData.keybinds
+    property alias keybindApprovals: settingsData.keybindApprovals
     property alias activeModules: settingsData.activeModules
+    property alias webApps: settingsData.webApps
+    property alias launcherShortcuts: settingsData.launcherShortcuts
 
     FileView {
         id: settingsFile
@@ -38,22 +41,26 @@ Singleton {
             property string styleId: "pixel-modern"
             property string paletteId: "andarouni"
             property string fontFamily: "__style__"
-        property var moduleFontOverrides: ({})
-        property string clockFormat: "HH:mm"
-        property string wallpaperFit: "cover"
-        property bool wallpaperThemeOriented: true
-        property var wallpaperManualSelection: []
+            property var moduleFontOverrides: ({})
+            property string clockFormat: "HH:mm"
+            property string wallpaperFit: "cover"
+            property bool wallpaperThemeOriented: true
+            property var wallpaperManualSelection: []
 
         // palette key -> array of wallpaper paths.
         // Arrays are intentional: rotation support can be added
         // later without changing the persisted data model.
 
-        property string wallpaperRotationMode: "sequence"
-        property int wallpaperIntervalMinutes: 30
-        property var hiddenApplications: []
-        property var launcherSources: ({ applications: true, actions: true })
-        property var keybinds: ({})
-        property var activeModules: ({ bar: "seashell" })
+            property string wallpaperRotationMode: "sequence"
+            property int wallpaperIntervalMinutes: 30
+            property var hiddenApplications: []
+            property var launcherSources: ({ applications: true, actions: true, webApps: true, shortcuts: true })
+            property var keybinds: ({})
+            property var keybindApprovals: ({})
+            property var activeModules: ({ bar: "bar.seashell", launcher: "launcher.seashell",
+                wallpaper: "wallpaper.seashell" })
+            property var webApps: []
+            property var launcherShortcuts: []
         }
     }
 
