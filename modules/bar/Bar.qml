@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
-import qs
+
+import qs.core
 
 PanelWindow {
     id: bar
@@ -50,7 +51,7 @@ PanelWindow {
         Text {
             anchors.centerIn: parent
 
-            text: "SEASHELL"
+            text: Config.shellName.toUpperCase()
             color: Theme.foreground
 
             font {

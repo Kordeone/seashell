@@ -1,5 +1,6 @@
 import Quickshell
-import qs.components
+
+import qs.modules.bar
 
 ShellRoot {
     Bar {}
