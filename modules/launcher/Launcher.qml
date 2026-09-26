@@ -85,138 +85,6 @@ Scope {
 
             property int selectedIndex: 0
 
-            function applicationMatches(
-                application,
-                query
-            ) {
-                if (!query)
-                    return true
-
-                const name =
-                    (
-                        application.name
-                        || ""
-                    ).toLowerCase()
-
-                const generic =
-                    (
-                        application.genericName
-                        || ""
-                    ).toLowerCase()
-
-                const comment =
-                    (
-                        application.comment
-                        || ""
-                    ).toLowerCase()
-
-                const id =
-                    (
-                        application.id
-                        || ""
-                    ).toLowerCase()
-
-                let keywords = ""
-
-                if (application.keywords) {
-                    keywords =
-                        application.keywords
-                            .join(" ")
-                            .toLowerCase()
-                }
-
-                return (
-                    name.includes(query)
-                    || generic.includes(query)
-                    || comment.includes(query)
-                    || id.includes(query)
-                    || keywords.includes(query)
-                )
-            }
-
-            function applicationScore(
-                application,
-                query
-            ) {
-                if (!query)
-                    return 0
-
-                const name =
-                    (
-                        application.name
-                        || ""
-                    ).toLowerCase()
-
-                const generic =
-                    (
-                        application.genericName
-                        || ""
-                    ).toLowerCase()
-
-                if (name === query)
-                    return 1000
-
-                if (name.startsWith(query))
-                    return 800
-
-                if (generic.startsWith(query))
-                    return 600
-
-                if (name.includes(query))
-                    return 400
-
-                return 100
-            }
-
-            function filteredApplications(
-                applications,
-                rawQuery
-            ) {
-                const query =
-                    rawQuery
-                        .trim()
-                        .toLowerCase()
-
-                let result =
-                    [
-                        ...applications
-                    ].filter(
-                        application =>
-                            applicationMatches(
-                                application,
-                                query
-                            )
-                    )
-
-                result.sort(
-                    function(a, b) {
-                        const scoreDifference =
-                            applicationScore(
-                                b,
-                                query
-                            )
-                            - applicationScore(
-                                a,
-                                query
-                            )
-
-                        if (
-                            scoreDifference !== 0
-                        ) {
-                            return scoreDifference
-                        }
-
-                        return (
-                            a.name || ""
-                        ).localeCompare(
-                            b.name || ""
-                        )
-                    }
-                )
-
-                return result
-            }
-
             function moveSelection(delta) {
                 const count =
                     resultModel.values.length
@@ -241,11 +109,11 @@ Scope {
             }
 
             function launchSelected() {
-                const applications =
+                const items =
                     resultModel.values
 
                 if (
-                    applications.length === 0
+                    items.length === 0
                 ) {
                     return
                 }
@@ -253,15 +121,14 @@ Scope {
                 const index =
                     Math.min(
                         selectedIndex,
-                        applications.length - 1
+                        items.length - 1
                     )
 
-                const application =
-                    applications[index]
+                const item = items[index]
 
                 ShellState.hideLauncher()
 
-                application.execute()
+                LauncherModel.activate(item)
             }
 
             onVisibleChanged: {
@@ -530,7 +397,7 @@ Scope {
                         }
 
                         text:
-                            "Search applications…"
+                            "Search apps and actions…"
 
                         color:
                             Theme.foregroundDisabled
@@ -554,13 +421,7 @@ Scope {
                     objectProp: "id"
 
                     values:
-                        window.filteredApplications(
-                            DesktopEntries
-                                .applications
-                                .values,
-
-                            search.text
-                        )
+                        LauncherModel.search(search.text)
                 }
 
                 // --------------------------------------------
@@ -700,14 +561,17 @@ Scope {
                             Text {
                                 visible:
                                     (
-                                        modelData.genericName
-                                        || ""
+                                    modelData.description
+                                    || ""
                                     ).length > 0
 
                                 width: parent.width
 
                                 text:
-                                    modelData.genericName
+                                    (modelData.type === "action"
+                                        ? "SEASHELL ACTION · "
+                                        : "APPLICATION · ")
+                                    + modelData.description
 
                                 elide:
                                     Text.ElideRight
@@ -765,7 +629,7 @@ Scope {
                             onClicked: {
                                 ShellState.hideLauncher()
 
-                                modelData.execute()
+                                LauncherModel.activate(modelData)
                             }
                         }
                     }
@@ -784,7 +648,7 @@ Scope {
                         results
 
                     text:
-                        "No applications found"
+                        "No results found"
 
                     color:
                         Theme.foregroundDisabled

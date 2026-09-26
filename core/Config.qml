@@ -17,6 +17,10 @@ Singleton {
     property alias wallpaperManualSelection: settingsData.wallpaperManualSelection
     property alias wallpaperRotationMode: settingsData.wallpaperRotationMode
     property alias wallpaperIntervalMinutes: settingsData.wallpaperIntervalMinutes
+    property alias hiddenApplications: settingsData.hiddenApplications
+    property alias launcherSources: settingsData.launcherSources
+    property alias keybinds: settingsData.keybinds
+    property alias activeModules: settingsData.activeModules
 
     FileView {
         id: settingsFile
@@ -46,6 +50,10 @@ Singleton {
 
         property string wallpaperRotationMode: "sequence"
         property int wallpaperIntervalMinutes: 30
+        property var hiddenApplications: []
+        property var launcherSources: ({ applications: true, actions: true })
+        property var keybinds: ({})
+        property var activeModules: ({ bar: "seashell" })
         }
     }
 

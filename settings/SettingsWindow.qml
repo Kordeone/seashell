@@ -1,11 +1,17 @@
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 
 import qs.core
 import qs.styles
 
 PanelWindow {
     id: window
+
+    ShortcutInhibitor {
+        window: window
+        enabled: window.visible && keybindPage.capturingId.length > 0
+    }
 
     visible: ShellState.settingsOpen
 
@@ -108,6 +114,28 @@ PanelWindow {
             ]
         }
 
+        if (key === "launcher") {
+            return [
+                { key: "general", name: "GENERAL" },
+                { key: "sources", name: "SOURCES" },
+                { key: "applications", name: "APPLICATIONS" }
+            ]
+        }
+
+        if (key === "keybinds") {
+            return [
+                { key: "general", name: "GENERAL" },
+                { key: "shortcuts", name: "SHORTCUTS" }
+            ]
+        }
+
+        if (key === "modules") {
+            return [
+                { key: "general", name: "GENERAL" },
+                { key: "modules", name: "MODULES" }
+            ]
+        }
+
         return [
             { key: "general", name: "GENERAL" }
         ]
@@ -153,8 +181,8 @@ PanelWindow {
 
         case "launcher":
             return [
-                "Application search",
-                "Commands and shell actions",
+                "Unified application and Seashell action search",
+                "Source controls and hidden applications",
                 "Favorites and recent applications",
                 "Calculator and quick actions",
                 "Search provider extensions"
@@ -233,20 +261,20 @@ PanelWindow {
 
         case "keybinds":
             return [
-                "Seashell action shortcuts",
-                "Launcher shortcut",
-                "Settings shortcut",
-                "Module shortcuts",
-                "Conflict detection"
+                "Keyboard-first: core actions work through global shortcuts and Launcher",
+                "Backend: Hyprland global shortcuts",
+                "Current status: " + Keybinds.backendStatus,
+                "Shortcut capture and Seashell duplicate detection are in Shortcuts",
+                "More shell and module actions will join the registry later"
             ]
 
         case "modules":
             return [
-                "Curated ready-to-use module catalog",
-                "Best-in-class external module integrations",
-                "Compatibility adapters",
-                "Enable, disable and update modules",
-                "Native fallback modules"
+                "One active provider per conflicting category",
+                "Seashell Bar remains the built-in fallback",
+                "Waybar is the first external provider",
+                "Available, installed and active are separate states",
+                "Notifications, wallpaper and other categories come later"
             ]
 
         case "plugins":
@@ -274,12 +302,20 @@ PanelWindow {
 
     onCurrentSectionChanged: {
         currentSubSection = "general"
+        ShellState.settingsSection = currentSection
+        ShellState.settingsPage = "general"
         fontBrowserOpen = false
     }
 
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
+            const requestedSection = ShellState.settingsSection
+            const requestedPage = ShellState.settingsPage
+            currentSection = requestedSection
+            currentSubSection = requestedPage
+            ShellState.settingsPage = requestedPage
             keyboardFocus.forceActiveFocus()
+        }
 
         if (!visible) {
             fontBrowserOpen = false
@@ -645,6 +681,7 @@ PanelWindow {
 
                 onSelected: key => {
                     window.currentSubSection = key
+                    ShellState.settingsPage = key
                     window.fontBrowserOpen = false
                 }
             }
@@ -742,6 +779,26 @@ PanelWindow {
 
                     tab:
                         window.currentSubSection
+                }
+
+                LauncherPage {
+                    anchors.fill: parent
+                    visible: window.currentSection === "launcher"
+                        && window.currentSubSection !== "general"
+                    tab: window.currentSubSection
+                }
+
+                KeybindsPage {
+                    id: keybindPage
+                    anchors.fill: parent
+                    visible: window.currentSection === "keybinds"
+                        && window.currentSubSection === "shortcuts"
+                }
+
+                ModulesPage {
+                    anchors.fill: parent
+                    visible: window.currentSection === "modules"
+                        && window.currentSubSection === "modules"
                 }
             }
         }
