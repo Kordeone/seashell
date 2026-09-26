@@ -645,6 +645,111 @@ Item {
             }
 
             // =================================================
+            // APPLY MANUAL WALLPAPER POOL
+            // =================================================
+
+            Rectangle {
+                visible:
+                    !Config.wallpaperThemeOriented
+
+                width: parent.width
+                height: 46
+
+                radius:
+                    Theme.radiusMedium
+
+                color:
+                    root.draftSelection.length > 0
+                        ? Theme.accent
+                        : Theme.surface
+
+                opacity:
+                    root.draftSelection.length > 0
+                        ? 1.0
+                        : 0.45
+
+                border {
+                    width:
+                        Theme.borderWidth
+
+                    color:
+                        root.draftSelection.length > 0
+                            ? Theme.accent
+                            : Theme.border
+                }
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        leftMargin: 12
+                        verticalCenter:
+                            parent.verticalCenter
+                    }
+
+                    text:
+                        root.draftSelection.length
+                        + (
+                            root.draftSelection.length === 1
+                                ? " WALLPAPER SELECTED"
+                                : " WALLPAPERS SELECTED"
+                          )
+
+                    color:
+                        root.draftSelection.length > 0
+                            ? Theme.accentForeground
+                            : Theme.foregroundDisabled
+
+                    font {
+                        family:
+                            Theme.fontMono
+
+                        pixelSize: 7
+                        bold: true
+                    }
+                }
+
+                Text {
+                    anchors {
+                        right: parent.right
+                        rightMargin: 16
+                        verticalCenter:
+                            parent.verticalCenter
+                    }
+
+                    text: "SET"
+
+                    color:
+                        root.draftSelection.length > 0
+                            ? Theme.accentForeground
+                            : Theme.foregroundDisabled
+
+                    font {
+                        family:
+                            Theme.fontMono
+
+                        pixelSize: 9
+                        bold: true
+                        letterSpacing: 1
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+
+                    enabled:
+                        root.draftSelection.length > 0
+
+                    cursorShape:
+                        enabled
+                            ? Qt.PointingHandCursor
+                            : Qt.ArrowCursor
+
+                    onClicked:
+                        root.applyManualPool()
+                }
+            }
+
+            // =================================================
             // THEME ORIENTED POOL
             // =================================================
 
@@ -794,67 +899,7 @@ Item {
                         }
                     }
 
-                    Rectangle {
-                        anchors {
-                            right: parent.right
-                            rightMargin: 9
-                            verticalCenter:
-                                parent.verticalCenter
-                        }
-
-                        width: 98
-                        height: 34
-
-                        radius:
-                            Theme.radiusSmall
-
-                        color:
-                            root.draftSelection.length > 0
-                                ? Theme.accent
-                                : Theme.surfaceRaised
-
-                        opacity:
-                            root.draftSelection.length > 0
-                                ? 1.0
-                                : 0.45
-
-                        Text {
-                            anchors.centerIn:
-                                parent
-
-                            text: "SET"
-
-                            color:
-                                root.draftSelection.length > 0
-                                    ? Theme.accentForeground
-                                    : Theme.foregroundDisabled
-
-                            font {
-                                family:
-                                    Theme.fontMono
-
-                                pixelSize: 8
-                                bold: true
-                                letterSpacing: 0.8
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill:
-                                parent
-
-                            enabled:
-                                root.draftSelection.length > 0
-
-                            cursorShape:
-                                enabled
-                                    ? Qt.PointingHandCursor
-                                    : Qt.ArrowCursor
-
-                            onClicked:
-                                root.applyManualPool()
-                        }
-                    }
+    
                 }
             }
         }
